@@ -81,7 +81,7 @@
       G.api = api;
       if (api.system().mode === 'nas') load().then(d => { if (d && d.jobs && d.jobs.length) changed(); });   // nothing to show yet: no redraw
       api.views.add({ id: 'downloads', group: 'music', order: 42, title: 'Downloads', icon: '⬇️', subtitle: 'Songs and records, into your music folder', render: el => {
-        if (api.system().mode !== 'nas') { el.innerHTML = '<p class="muted">Downloads run on your NAS. Open THING from the NAS to use them.</p>'; return; }
+        if (api.system().mode !== 'nas') { el.innerHTML = '<p class="muted">Downloads run on your NAS. Open CRATE DIGGER from the NAS to use them.</p>'; return; }
         if (!G.d) { el.innerHTML = api.ui.skeleton(3, 'Loading downloads'); load().then(changed); return; }
         const D = G.d, S = D.sources, ic = n => api.ui.icon(n);
         const src = (on, name, what) => `<li class="${on ? 'on' : ''}">${ic(on ? 'circle-check' : 'circle')}<b>${name}</b> <span class="muted">${what}</span></li>`;
@@ -103,7 +103,7 @@
           ${D.jobs.length ? `<ul class="dl-l">${D.jobs.map(row).join('')}</ul>` : `<p class="muted">Nothing yet. Press ${ic('download')} beside a song in Music Radar, or type one above.</p>`}
           <details class="dl-set"><summary>Sources and settings</summary>
             <ul class="dl-src">${src(S.slskd, 'Soulseek', 'through your slskd: songs and records, often lossless. Looked at first.')}${src(S.ytdlp, 'YouTube Music, YouTube and SoundCloud', 'through yt-dlp, kept up to date on the NAS: songs.')}${src(S.usenet, 'Usenet', `a newznab indexer and ${S.usenetClient || 'SABnzbd or NZBGet'}: records.`)}</ul>
-            <p class="muted">Addresses and keys go in Settings → Connections. The music folder is <code>${E((D.music && D.music.path) || '/music')}</code> inside THING: set MUSIC_PATH in .env on the NAS to your music share, and point Navidrome, Plex or Jellyfin at the same folder.</p>
+            <p class="muted">Addresses and keys go in Settings → Connections. The music folder is <code>${E((D.music && D.music.path) || '/music')}</code> inside CRATE DIGGER: set MUSIC_PATH in .env on the NAS to your music share, and point Navidrome, Plex or Jellyfin at the same folder.</p>
             <label class="dl-tg"><input type="checkbox" id="dl-singles" ${D.settings && D.settings.newSingles ? 'checked' : ''}> Get new singles from artists you follow when they come out</label>
             <p class="muted">Songs from YouTube or SoundCloud are looked for again on Soulseek after a week, and swapped for a better copy when there is one.</p>
           </details></div>

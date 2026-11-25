@@ -13,8 +13,16 @@ has the music notes: Radar, Downloads, KEXP and so on).
   plugin there links here and shows what's playing.
 
 ## Backlog
-- One-time import of the music data from THING's data folder on the NAS (radar database and settings, downloads history,
-  podcasts, keys for the music services).
-- Trim the task code out of core.js here (meeting.js is still needed at start-up because core.js calls it).
+- Run the one-time import of THING's music data on the NAS: `sudo sh scripts/import-from-thing.sh` (the script is
+  written; it hasn't been run yet).
+- Cleanup after the split (2026-11-25): THING-only server code removed (calendar, daily, feeds, Havoc, NHL, company
+  lookup, Zoho Cliq, recipes, and unused vendor files such as Harper and the Havoc engine). meeting.js is no longer
+  loaded: core.js runs without it when there are no tasks. Words on screen use the app's name (`window.CadenceAppName`).
+- Still in THING's copy of core.js and the shell plugins: the `CadenceAppName` / no-meeting.js changes above. Copy
+  core.js, notify, status, secure-phone, account and dbview to THING so the two stay the same.
+- The task code is still inside core.js (kept identical to THING's). Turned off with `tasks: false`; cutting it out
+  would split the two copies.
+- The Movie night theme reads Letterboxd from THING's Feeds plugin, which isn't here: it only shows its "add your
+  diary" note.
 - A CRATE DIGGER logo and favicon (Lucide, no copied artwork).
 - From THING's backlog, music items: Radar mix playlists (Flows), a Navidrome / Plex / Jellyfin library link.

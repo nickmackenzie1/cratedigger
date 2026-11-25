@@ -1,5 +1,5 @@
 #!/bin/sh
-# Starts Cadence as the unprivileged `node` user when that's safe, otherwise stays root and says why in the log.
+# Starts CRATE DIGGER as the unprivileged `node` user when that's safe, otherwise stays root and says why in the log.
 # (2026-11-13: switching to `node` blindly broke HTTPS and sign-in, because the key in certs/ was root-only.)
 # RUN_AS_ROOT=1 in .env skips all of this.
 set -u
@@ -30,7 +30,7 @@ if [ -z "$why" ]; then
 fi
 
 # the Downloads folders: new (empty) ones made by Docker belong to root; give those to the app user. A folder that
-# already has your music in it is left as it is; THING says on its Downloads page if it can't write there.
+# already has your music in it is left as it is; CRATE DIGGER says on its Downloads page if it can't write there.
 for M in /music /slskd /usenet; do
   [ -d "$M" ] && [ -z "$(ls -A "$M" 2>/dev/null)" ] && [ "$(stat -c %u "$M")" = 0 ] && chown "$U:$U" "$M" 2>/dev/null
 done

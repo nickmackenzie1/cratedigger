@@ -37,7 +37,7 @@ function manifestOf(files) {
     Image: function () { return stub; }, fetch: () => new Promise(() => {}), Intl, RegExp, Number, String, Boolean, Symbol, Error, WeakMap, WeakSet, Reflect, Proxy, Math, JSON, Date, Object, Array, Promise, Map, Set, URL,
     parseInt, parseFloat, isNaN, encodeURIComponent, decodeURIComponent, btoa: s => s, atob: s => s, innerWidth: 1200, innerHeight: 800, devicePixelRatio: 1, performance: { now: noop },
     setTimeout: noop, setInterval: noop, clearTimeout: noop, clearInterval: noop, requestAnimationFrame: noop, cancelAnimationFrame: noop, requestIdleCallback: noop, queueMicrotask: noop, addEventListener: noop, removeEventListener: noop,
-    document: stub, localStorage: stub, sessionStorage: stub, navigator: stub, location: stub, matchMedia: stub, getComputedStyle: stub, CSS: stub, CadenceKit: stub,
+    document: stub, localStorage: stub, sessionStorage: stub, navigator: stub, location: stub, matchMedia: stub, getComputedStyle: stub, CSS: stub, CadenceKit: stub, CadenceAppName: appName(),
     console: { log: noop, warn: noop, error: noop, info: noop }, Cadence: new Proxy({ registerPlugin: d => defs.push(d) }, { get: (t, k) => (k in t ? t[k] : stub) }) };
   // theme registrations are recorded too (themes.js's own window.CadenceThemes = … is ignored here)
   const themeRec = new Proxy({ register: t => themeDefs.push(t), list: () => [] }, { get: (t, k) => (k in t ? t[k] : stub) });
@@ -55,6 +55,10 @@ function manifestOf(files) {
   }
   return { plugins: out, themes };
 }
+// the app's name from index.html (window.CADENCE_APP = { name: '…' }), as core.js gives it to plugins; THING when it's unset
+function appName() {
+  try { const m = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8').match(/CADENCE_APP\s*=\s*\{\s*name:\s*'([^']+)'/); return m ? m[1] : 'THING'; } catch { return 'THING'; }
+}
 // what the Themes page needs to show a theme whose pack isn't loaded: its name, where it's filed, and its colours
 function themeMeta(t) {
   const v = t.vars || {}, l = t.light || {}, pv = t.preview || {}, s = x => (typeof x === 'string' ? x.slice(0, 300) : undefined);
@@ -71,7 +75,7 @@ function themeMeta(t) {
 function build(srcs) {
   const sig = srcs.map(s => { try { const st = fs.statSync(path.join(PUBLIC_DIR, s)); return `${s}:${st.size}:${st.mtimeMs}`; } catch (e) { return `${s}:missing`; } }).join('|');
   if (cache && cache.sig === sig) return cache;
-  const files = srcs.map(s => { try { return [s, fs.readFileSync(path.join(PUBLIC_DIR, s), 'utf8')]; } catch (e) { return [s, `console.warn(${JSON.stringify('THING: missing ' + s)})`]; } });
+  const files = srcs.map(s => { try { return [s, fs.readFileSync(path.join(PUBLIC_DIR, s), 'utf8')]; } catch (e) { return [s, `console.warn(${JSON.stringify('CRATE DIGGER: missing ' + s)})`]; } });
   const hash = crypto.createHash('sha1'); for (const [s, c] of files) hash.update(s + '\0' + c + '\0');
   let manifest = {}, themes = {}; try { ({ plugins: manifest, themes } = manifestOf(files)); } catch (e) { console.warn('bundle manifest', e.message); }
   cache = { sig, hash: hash.digest('hex').slice(0, 12), files, manifest, themes, out: new Map() };
@@ -100,7 +104,7 @@ function jsFor(b, { skip = [], only = null } = {}) {
   let hit = b.out.get(key); if (hit) return hit;
   const sk = new Set(skip.filter(s => b.manifest[s] || b.themes[s])), on = only && new Set(only.filter(s => b.files.some(f => f[0] === s)));
   const files = b.files.filter(([s]) => (on ? on.has(s) : !sk.has(s)));
-  const js = Buffer.from(`/* THING bundle: ${files.length} files${sk.size ? `, ${sk.size} switched-off plugin files left out` : ''}, see server/lib/bundle.js */\n`
+  const js = Buffer.from(`/* CRATE DIGGER bundle: ${files.length} files${sk.size ? `, ${sk.size} switched-off plugin files left out` : ''}, see server/lib/bundle.js */\n`
     + `(function(F){for(var i=0;i<F.length;i++){var s=document.createElement('script');s.dataset.src=F[i][0];s.text=F[i][1]+'\\n//# sourceURL='+F[i][0];document.body.appendChild(s);}})(${JSON.stringify(files)});\n`);
   // compressed off the main thread (zlib's own threads), so a new combination never holds up other requests: gzip
   // first (quick), then Brotli at its best setting (2026-11-18: about a quarter smaller than gzip for this code, but

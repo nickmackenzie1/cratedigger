@@ -14,7 +14,7 @@ const API = () => (process.env.LRCLIB_API || 'https://lrclib.net').replace(/\/$/
 const FILE = () => path.join(DATA_DIR, 'lyrics-cache.json');
 const HIT = 60 * 86400e3, MISS = 3 * 86400e3, GAP = 350, MAX = 4000;
 const version = () => { try { return JSON.parse(fs.readFileSync(path.join(PUBLIC_DIR, 'version.json'), 'utf8')).version; } catch { return 'dev'; } };
-const UA = () => `THING/${version()} (personal self-hosted to-do and music app; https://github.com/nickmackenzie1/cadence)`;
+const UA = () => `CrateDigger/${version()} (personal self-hosted music app; https://github.com/nickmackenzie1/cratedigger)`;
 
 let cache = null, saveT = 0;
 const load = () => { if (!cache) { try { cache = JSON.parse(fs.readFileSync(FILE(), 'utf8')); } catch { cache = {}; } } return cache; };

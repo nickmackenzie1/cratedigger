@@ -52,7 +52,7 @@ test('the Problems page lists the background work on the NAS', async ({ page }) 
   try {
     for (let i = 0; i < 150; i++) { try { if ((await fetch(B + '/api/health')).ok) break; } catch {} await new Promise(r => setTimeout(r, 100)); }
     const jobs = await (await fetch(B + '/api/jobs')).json();
-    expect(jobs.map(j => j.name)).toEqual(expect.arrayContaining(['db-upkeep', 'feeds', 'reminders']));
+    expect(jobs.map(j => j.name)).toEqual(expect.arrayContaining(['db-upkeep', 'reminders']));
     await expect.poll(async () => { const r = await fetch(B + '/api/radar/jobs'); return r.ok ? (await r.json()).map(j => j.name) : []; }, { timeout: 25000 }).toContain('radar-scan');
     await page.goto(B + '/#view-problems');
     await expect(page.locator('.pr-jh')).toHaveText('Background work', { timeout: 15000 });

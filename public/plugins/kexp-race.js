@@ -110,7 +110,7 @@
         if (!S.d && !S.err) { load(); if (!S.d) { el.innerHTML = api.ui.skeleton(1) + '<div class="skel" style="height:360px"></div>'; return; } }
         if (S.err && !S.d) { el.innerHTML = `<p class="muted">Couldn't load the chart: ${E(S.err)}. <button class="lnk" id="kr-retry">Try again</button></p>`; el.querySelector('#kr-retry').onclick = () => { S.err = null; load(); }; return; }
         if (!S.d.ready) {
-          el.innerHTML = `<div class="kr"><p>Your NAS is counting KEXP's plays month by month (${Math.round((S.d.progress || 0) * 100)}% so far). It works on this while you're not using THING, so check back later.</p></div>`;
+          el.innerHTML = `<div class="kr"><p>Your NAS is counting KEXP's plays month by month (${Math.round((S.d.progress || 0) * 100)}% so far). It works on this while you're not using CRATE DIGGER, so check back later.</p></div>`;
           return;
         }
         const end = S.d.months.length - 1;

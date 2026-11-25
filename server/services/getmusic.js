@@ -1,15 +1,15 @@
 'use strict';
 /* Getting music (2026-11-24, user: "I like the downloading idea, let's use their code").
-   A song (or a record) from Radar goes into a small queue on the NAS. One at a time, THING looks for it:
+   A song (or a record) from Radar goes into a small queue on the NAS. One at a time, CRATE DIGGER looks for it:
      songs:   Soulseek (slskd) first for the best copy, then YouTube Music (yt-dlp), then SoundCloud (yt-dlp)
      records: Usenet (a newznab indexer + SABnzbd or NZBGet), then a whole folder on Soulseek
    and puts the file in the music folder as Artist/Album/Artist - Title.ext, where Navidrome, Plex or Jellyfin see it and
-   THING's player plays it in full. Each file keeps a note of where it came from and how good it is; a song that came
+   CRATE DIGGER's player plays it in full. Each file keeps a note of where it came from and how good it is; a song that came
    from YouTube or SoundCloud is looked for again on Soulseek later, and swapped for a better copy when there is one.
    Optional (off unless you switch it on): new singles from artists you follow are fetched when they come out.
    Deezer, Tidal and Monochrome are left out on purpose: they get around the protection on paid streams.
 
-   Ported in THING's style from Aurral (MIT licence, Copyright (c) 2026 Aurral Contributors, github.com/lklynet/aurral):
+   Ported in CRATE DIGGER's style from Aurral (MIT licence, Copyright (c) 2026 Aurral Contributors, github.com/lklynet/aurral):
    the yt-dlp arguments (YouTube Music song search, the m4a audio stream copied as it is, embedded tags), slskd's
    search / transfer API use and finding the finished file (the remote file's folder under slskd's downloads, then a
    search by name and size), and the SABnzbd / NZBGet calls. Ideas from MusicGrabber (The Unlicense, g33kphr33k):
@@ -18,7 +18,7 @@
    Settings (Settings → Connections, or .env): SLSKD_URL + SLSKD_API_KEY; NEWZNAB_URL + NEWZNAB_API_KEY with
    SABNZBD_URL + SABNZBD_API_KEY or NZBGET_URL (+ NZBGET_USER / NZBGET_PASS). GET_YTDLP=0 turns yt-dlp off.
    Folders inside the container (docker-compose.yml mounts them): MUSIC_DIR=/music, SLSKD_DOWNLOADS=/slskd,
-   USENET_COMPLETE=/usenet. Nothing here listens to the internet: THING only asks these services, on your network. */
+   USENET_COMPLETE=/usenet. Nothing here listens to the internet: CRATE DIGGER only asks these services, on your network. */
 const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
@@ -83,7 +83,7 @@ function sources() {
 async function musicFolder() {
   const dir = MUSIC();
   try { await fsp.mkdir(dir, { recursive: true }); const p = path.join(dir, `.thing-write-test-${process.pid}`); await fsp.writeFile(p, ''); await fsp.unlink(p); return { ok: true, path: dir }; }
-  catch (e) { return { ok: false, path: dir, note: `THING can't save into the music folder (${e.code || e.message}). On the NAS, give the folder read and write for everyone, or put RUN_AS_ROOT=1 in .env.` }; }
+  catch (e) { return { ok: false, path: dir, note: `CRATE DIGGER can't save into the music folder (${e.code || e.message}). On the NAS, give the folder read and write for everyone, or put RUN_AS_ROOT=1 in .env.` }; }
 }
 
 // ---- running a program (yt-dlp, ffmpeg) ----
@@ -217,7 +217,7 @@ async function slskFetch(j, pick) {
   const files = [];
   for (const f of pick.files) {
     const p = await locate(SLSKD_ROOT(), slashed(f.filename), +f.size || 0);
-    if (!p) throw new Error(`Soulseek finished, but THING can't see the file in slskd's downloads folder (${SLSKD_ROOT()})`);
+    if (!p) throw new Error(`Soulseek finished, but CRATE DIGGER can't see the file in slskd's downloads folder (${SLSKD_ROOT()})`);
     files.push({ path: p, name: path.basename(p) });
   }
   return { source: 'Soulseek', link: '', files, quality: pick.q, cleanup: async () => { for (const f of files) { try { const d = path.dirname(f.path); if (d !== SLSKD_ROOT() && !(await fsp.readdir(d)).length) await fsp.rmdir(d); } catch {} } } };
@@ -299,10 +299,10 @@ async function viaUsenet(j) {
       if (s && /^SUCCESS/.test(String(s.Status))) where = s.FinalDir || s.DestDir || s.NZBName;
     }
   }
-  // the download program reports its own path; find the same folder name in what THING sees of it
+  // the download program reports its own path; find the same folder name in what CRATE DIGGER sees of it
   const name = path.basename(slashed(where)), root = USENET_ROOT();
   const dir = (await fsp.stat(path.join(root, name)).then(s => s.isDirectory() && path.join(root, name), () => null)) || (await findDir(root, name, 3));
-  if (!dir) throw new Error(`Usenet finished, but THING can't see "${name}" in the completed folder (${root})`);
+  if (!dir) throw new Error(`Usenet finished, but CRATE DIGGER can't see "${name}" in the completed folder (${root})`);
   const files = (await listAudio(dir, 3)).map(p => ({ path: p, name: path.basename(p) }));
   if (!files.length) throw new Error('The Usenet release had no music in it');
   return { source: 'Usenet', link: '', files, quality: rel.q, cleanup: () => fsp.rm(dir, { recursive: true, force: true }) };
@@ -435,7 +435,7 @@ async function owned(list = []) {
   for (const x of arr(list).slice(0, 500)) { const r = lib.find(x.artist, x.title); if (r) out[key(x.artist, x.title)] = { p: r, q: (st().prov[r] || {}).q || quality(extOf(r)) }; }
   return out;
 }
-// a file from the music folder, for THING's player (Range, so seeking works)
+// a file from the music folder, for CRATE DIGGER's player (Range, so seeking works)
 async function stream(req, res, p) {
   const root = path.resolve(MUSIC()), full = path.resolve(root, String(p || ''));
   if (!full.startsWith(root + path.sep) || !AUDIO.test(full)) { res.writeHead(404); return res.end(); }

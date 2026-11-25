@@ -35,7 +35,7 @@ test('the NAS finds lyrics (exact, then by search), names the app, and keeps wha
   expect(b).toMatchObject({ found: true, id: 9, plain: 'Plain made-up words', synced: null });
   const c = await (await fetch(`${B}/api/lyrics?artist=Nobody&track=Nothing`)).json();
   expect(c).toEqual({ found: false });
-  expect(asked[0].ua).toMatch(/^THING\//);
+  expect(asked[0].ua).toMatch(/^CrateDigger\//);
   const n = asked.length;
   await fetch(`${B}/api/lyrics?artist=Test%20Band&track=Test%20Song`); await fetch(`${B}/api/lyrics?artist=Nobody&track=Nothing`);
   expect(asked.length).toBe(n);                                       // both answered from the NAS's copy

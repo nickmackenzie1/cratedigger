@@ -1,8 +1,8 @@
 {
   "name": "cratedigger",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "private": true,
-  "description": "Modular to-do app for consultants. The app itself has no dependencies; these are only for tests.",
+  "description": "CRATE DIGGER: music discovery on your own NAS. The app itself has no dependencies; these are only for tests.",
   "scripts": {
     "start": "node server.js",
     "test": "playwright test",

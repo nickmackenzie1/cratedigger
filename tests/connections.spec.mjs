@@ -81,7 +81,7 @@ test('Commons photos: free licences only, wide ones, credited, through the NAS, 
   const j = await (await fetch(B + '/api/commons?q=snowy%20forest%20Ontario')).json();
   expect(j.photos.map(p => p.credit)).toEqual(['Jane Doe, CC BY-SA 4.0, via Wikimedia Commons', 'Sam Roe, CC0, via Wikimedia Commons']);
   expect(j.photos[0].link).toBe('https://commons.wikimedia.org/wiki/File:Photo_3.jpg');
-  expect(asked.some(a => a.includes('incategory:Quality_images') && a.includes('Cadence/1'))).toBe(true);
+  expect(asked.some(a => a.includes('incategory:Quality_images') && a.includes('CrateDigger/1'))).toBe(true);
   const img = await fetch(B + '/' + j.photos[0].url); expect(img.status).toBe(200); expect(img.headers.get('content-type')).toBe('image/jpeg');
   expect((await fetch(B + '/api/commons/img/0123456789abcdef0123.jpg')).status).toBe(404);   // only ones it handed out
   const before = asked.filter(a => a.includes('/w/api.php')).length;

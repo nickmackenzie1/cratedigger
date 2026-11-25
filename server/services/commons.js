@@ -11,7 +11,7 @@ const { DATA_DIR } = require('../config');
 const { safeFetch } = require('../lib/net');
 
 const API = () => (process.env.COMMONS_API || 'https://commons.wikimedia.org').replace(/\/$/, '');
-const UA = 'Cadence/1 (self-hosted to-do app; theme backgrounds)';
+const UA = 'CrateDigger/1 (self-hosted music app; theme backgrounds)';
 async function get(url, max = 2 * 1024 * 1024) {
   // a test's stand-in (COMMONS_API set) directly; the real Commons through the public-hosts-only fetch
   if (process.env.COMMONS_API) { const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(10000) }); if (!r.ok) throw new Error('HTTP ' + r.status); return { buf: Buffer.from(await r.arrayBuffer()) }; }

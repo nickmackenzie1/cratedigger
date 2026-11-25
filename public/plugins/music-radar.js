@@ -188,7 +188,7 @@
       window.__radar = { load, get G() { return G; } };
 
       api.views.add({ id: 'radar', group: 'music', order: 10, title: 'Music Radar', icon: '📡', subtitle: 'Up-and-coming music before it breaks', wide: true, render: el => {
-        if (api.system().mode !== 'nas') { el.innerHTML = empty('Music Radar runs on your NAS. Open THING from the NAS to use it.'); return; }
+        if (api.system().mode !== 'nas') { el.innerHTML = empty('Music Radar runs on your NAS. Open CRATE DIGGER from the NAS to use it.'); return; }
         // the last copy on this device fills G straight away (quiet: this render draws it); fresh pieces redraw as they land
         if (!G.loadedAt || Date.now() - G.loadedAt > 60e3) load({ quiet: true });
         if (!G.d) { el.innerHTML = G.err ? empty("Couldn't reach Music Radar on the NAS just now. It'll try again when you come back.") : `<div class="mr">${api.ui.skeleton(4, 'Loading Music Radar')}</div>`; return; }

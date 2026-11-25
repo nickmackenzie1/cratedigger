@@ -1,5 +1,5 @@
 FROM node:22-alpine
-# ffmpeg pulls the audio out and writes the tags for Downloads (yt-dlp itself is a standalone program THING keeps
+# ffmpeg pulls the audio out and writes the tags for Downloads (yt-dlp itself is a standalone program CRATE DIGGER keeps
 # up to date in data/bin, so no Python here)
 RUN apk add --no-cache su-exec ffmpeg
 WORKDIR /app

@@ -40,7 +40,7 @@ else
   # no Git package installed: use a throwaway git container
   g(){ docker run --rm --name "cratedigger-git-$$-$RANDOM" -v "$DIR:/repo" -w /repo alpine/git -c safe.directory='*' "$@"; }
 fi
-# builds run at the lowest priority (2026-11-18), so Cadence stays quick while a release builds: nice for the CPU,
+# builds run at the lowest priority (2026-11-18), so CRATE DIGGER stays quick while a release builds: nice for the CPU,
 # ionice for the disk. The docker CLI is what reads and sends the build context, so that's where ionice helps most.
 # (.dockerignore keeps the context to the app's own files, not data/.)
 LOW=""; command -v nice >/dev/null 2>&1 && LOW="nice -n 19"

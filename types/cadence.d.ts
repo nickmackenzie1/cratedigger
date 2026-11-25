@@ -139,6 +139,8 @@ interface Window { Cadence: CadenceGlobal; [k: string]: any }
 // shared helpers other scripts put on window (each plugin checks they exist before using them)
 declare var CadenceKit: any;
 declare var LifeKit: any;
+// the app's name (THING, or CRATE DIGGER from window.CADENCE_APP), set by core.js for plugins' plain words
+declare var CadenceAppName: string;
 declare var LZString: any;
 // Chrome's Document Picture-in-Picture (the visualizer's "Pop out"); not in TypeScript's DOM types yet
 declare var documentPictureInPicture: any;

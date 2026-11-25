@@ -53,7 +53,7 @@
 
   Cadence.registerPlugin({
     id: 'status', name: 'System status', version: '1.0.0', icon: '<path d="M4 16a8 8 0 0116 0"/><path d="M12 16l4-5"/>', color: '#64748b', category: 'System', tagline: 'Sync, latency & health',
-    description: 'Boot sequence, a live panel for NAS connection, sync, AI and caches, and an activity log of what THING is doing.',
+    description: 'Boot sequence, a live panel for NAS connection, sync, AI and caches, and an activity log of what ' + window.CadenceAppName + ' is doing.',
     setup(api) {
       const settings = () => Object.assign({ boot: true }, api.storage.get('settings') || {});
       let phase = G.phase || 'idle'; let widget = null;
@@ -122,7 +122,7 @@
             <div class="st-tile"><div class="v">v${E(h.version || '?')}</div><div class="l">Server · app v${E(sys.version)}</div></div>` : ''}
           </div>
           <div class="field"><label>Activity</label><div class="st-log">${G.log.slice().reverse().slice(0, 80).map(l => `<div><span>${new Date(l.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span><b style="font-weight:500;color:${l.kind === 'err' ? 'var(--danger)' : l.kind === 'ok' ? 'var(--ok)' : 'inherit'}">${E(l.msg)}</b></div>`).join('') || '<span>Nothing yet</span>'}</div></div>
-          <label class="row muted" style="align-items:center;gap:8px;font-size:13px"><input type="checkbox" id="st-bootset" ${settings().boot ? 'checked' : ''}> Show the boot sequence when THING opens</label>`,
+          <label class="row muted" style="align-items:center;gap:8px;font-size:13px"><input type="checkbox" id="st-bootset" ${settings().boot ? 'checked' : ''}> Show the boot sequence when ${window.CadenceAppName} opens</label>`,
           `<button class="btn" id="st-ping" style="margin-right:auto">↻ Re-check</button><button class="btn primary" data-act="close-modal">Close</button>`, 'wide');
         document.querySelector('#st-bootset').onchange = e => api.storage.set('settings', { ...settings(), boot: e.target.checked });
         document.querySelector('#st-ping').onclick = () => openPanel();
@@ -150,7 +150,7 @@
         el.innerHTML = `<div class="pr">
           <div class="pr-bar"><div class="pr-f">${[['all', 'Everything'], ['serious', 'Errors and freezes'], ['slow', 'Slow']].map(([k, l]) => `<button class="chip${f === k ? ' on' : ''}" data-pf="${k}">${l}</button>`).join('')}</div>
             <div><button class="btn ghost" id="pr-re">${api.ui.icon('refresh-cw')}Check again</button>${list.length ? `<button class="btn ghost" id="pr-clear">Clear the log</button>` : ''}</div></div>
-          ${!list.length ? '<p class="muted">Nothing has gone wrong that THING noticed.</p>' : `<p class="muted pr-sum">${[['stopped', 'unexpected stops'], ['error', 'errors'], ['stuck', 'freezes'], ['slow', 'slow spots'], ['browser', 'browser errors']].map(([k, l]) => counts(k) ? counts(k) + ' ' + l : '').filter(Boolean).join(' · ')}</p>
+          ${!list.length ? '<p class="muted">Nothing has gone wrong that ' + window.CadenceAppName + ' noticed.</p>' : `<p class="muted pr-sum">${[['stopped', 'unexpected stops'], ['error', 'errors'], ['stuck', 'freezes'], ['slow', 'slow spots'], ['browser', 'browser errors']].map(([k, l]) => counts(k) ? counts(k) + ' ' + l : '').filter(Boolean).join(' · ')}</p>
           <ul class="pr-l">${shown.map(x => { const [label, ic] = KIND[x.kind] || [x.kind, 'circle-alert'];
             return `<li class="pr-${E(x.kind)}"><span class="pr-ic">${api.ui.icon(ic)}</span><div><div class="pr-h"><b>${E(label)}</b><span class="muted">${E(new Date(x.at).toLocaleString())}${x.mb ? ` · ${x.mb} MB in use` : ''}</span></div><div class="pr-m">${E(x.msg)}</div>
               ${x.stack || x.where || x.doing || x.before || x.lastMb || x.detail ? `<details><summary>Details</summary><pre>${E([x.where && 'Page: ' + x.where, x.detail && 'Sizes: ' + x.detail, x.doing && 'Was serving: ' + x.doing, x.lastMb && 'Memory in use before it stopped: ' + x.lastMb + ' MB', x.lastVersion && 'Version: ' + x.lastVersion, x.version && 'Version: ' + x.version, x.before, x.stack].filter(Boolean).join('\n'))}</pre></details>` : ''}</div></li>`; }).join('')}</ul>`}</div>`;
@@ -195,7 +195,7 @@
       // startup inside the Island: connecting… → result → ready
       async function islandBoot() {
         const I = window.CadenceIsland, sleep = ms => new Promise(r => setTimeout(r, ms));
-        const n = { spin: true, title: 'Connecting…', sub: 'THING v' + api.system().version, sticky: true };
+        const n = { spin: true, title: 'Connecting…', sub: window.CadenceAppName + ' v' + api.system().version, sticky: true };
         // the notice's own handle: updating or dismissing "whatever's on the Island" could hit another notice and leave
         // this one stuck on Connecting… (fixed 2026-11-20)
         const t0 = Date.now(), hn = I.show(n);

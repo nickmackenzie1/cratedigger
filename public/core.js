@@ -146,6 +146,7 @@
      window.CADENCE_APP = { name, home, tasks, tabs }. THING leaves it unset and gets these defaults. With tasks:false the
      sidebar lists the views instead of tasks, areas and the Work/Life switch, and the space is always Life. */
   const APP = Object.assign({ name: 'THING', home: 'today', tasks: true, tabs: null }, window.CADENCE_APP || {});
+  window.CadenceAppName = APP.name;   // for plugins' plain words ("Open CRATE DIGGER from the NAS")
   let SPACE = (() => {
     if (!APP.tasks) return 'life';
     try {
@@ -383,7 +384,7 @@
       if (raw) {
         const d = Object.assign(blank(), raw);
         migrateOwners(d);
-        if (space === 'life') havocInLife(d);
+        if (space === 'life' && APP.tasks) havocInLife(d);
         return d;
       }
     } catch (e) {}
@@ -439,7 +440,7 @@
   function localSaveFailed(e) {
     if (localSaveFailed.told) return;
     localSaveFailed.told = true;
-    console.warn('THING: local save failed', e);
+    console.warn(APP.name + ': local save failed', e);
     setTimeout(() => {
       let nas = false;
       try {
@@ -759,7 +760,7 @@
         });
         addEventListener('online', () => this.push());
       } catch (e) {
-        console.warn('No THING server found, using browser storage', e);
+        console.warn('No ' + APP.name + ' server found, using browser storage', e);
         this.retryServer();
       } finally {
         this.connecting = false;
@@ -1616,7 +1617,7 @@
     const c = client(cid);
     if (!c || !c.domain) return;
     if (!Store.server) {
-      if (!opts.quiet) toast('Company lookup runs on your NAS — open THING there to refresh');
+      if (!opts.quiet) toast('Company lookup runs on your NAS — open ' + APP.name + ' there to refresh');
       return;
     }
     const j = opts.quiet ? null : job('company:' + cid, `Looking up ${c.domain}`, { sub: 'logo, colours, industry, description' });
@@ -2434,7 +2435,7 @@
       } catch (x) {}
     };
     const text = () =>
-      `THING ${document.querySelector('meta[name=version]')?.content || ''} · ${navigator.userAgent}\n\n` +
+      `${APP.name} ${document.querySelector('meta[name=version]')?.content || ''} · ${navigator.userAgent}\n\n` +
       list.map(e => `${e.at} ${e.route}\n${e.msg}\n${e.stack}`).join('\n\n');
     const copy = () => copyText(text());
     addEventListener('error', e => {
@@ -4396,7 +4397,7 @@
       if (!handled)
         try {
           if ('Notification' in window && Notification.permission === 'granted')
-            new Notification('THING', { body: t.title + (c ? ' · ' + c.name : ''), tag: 'rem-' + t.id });
+            new Notification(APP.name, { body: t.title + (c ? ' · ' + c.name : ''), tag: 'rem-' + t.id });
         } catch (e) {}
       try {
         const a = new (window.AudioContext || window.webkitAudioContext)();
@@ -5376,7 +5377,7 @@
     const box = $('#conn-list'); if (!box) return;
     let list;
     try { const r = await fetch('api/keys'); if (!r.ok) throw new Error(); list = await r.json(); }
-    catch (e) { box.innerHTML = '<p class="muted">Connections are kept on your NAS. Open THING from the NAS to set them up.</p>'; return; }
+    catch (e) { box.innerHTML = '<p class="muted">Connections are kept on your NAS. Open ' + esc(APP.name) + ' from the NAS to set them up.</p>'; return; }
     const row = k => `<div class="conn" data-k="${esc(k.id)}"><div class="conn-h"><b>${esc(k.name)}</b><span class="conn-st ${k.set ? 'on' : ''}">${k.set ? `${icon('check')}Connected${k.tail ? ' · ends in ' + esc(k.tail) : ''}${k.from === 'env' ? ' · from .env' : ''}` : 'Not connected'}</span></div>
       <div class="muted conn-for">${esc(k.for)}</div>
       <div class="row conn-in"><input class="inp" type="password" autocomplete="off" spellcheck="false" placeholder="${k.set ? 'Paste a new key to replace it' : 'Paste the key'}" aria-label="${esc(k.name)} key">
@@ -5452,7 +5453,7 @@
           .join('') || '<div class="muted" style="padding:20px 0;font-size:13px">No plugins match.</div>'
       }</div>`;
     } else if (settingsTab === 'connections') {
-      body += `<p class="muted" style="margin:0 0 12px">Keys for the outside services THING can use. Paste one and it's used straight away. Keys are kept on your NAS only: this page can save or remove them but never shows them again. Keys in <code>.env</code> work too; one pasted here takes over.</p><div id="conn-list"><p class="muted">Loading…</p></div>`;
+      body += `<p class="muted" style="margin:0 0 12px">Keys for the outside services ${esc(APP.name)} can use. Paste one and it's used straight away. Keys are kept on your NAS only: this page can save or remove them but never shows them again. Keys in <code>.env</code> work too; one pasted here takes over.</p><div id="conn-list"><p class="muted">Loading…</p></div>`;
     } else if (settingsTab === 'dev') {
       body += `<p class="muted" style="margin:0">Everything beyond the core — Fireflies import, AI extraction, recap emails, Client Pulse — is a plugin built on this API. Write your own:</p>
 <pre class="code">Cadence.registerPlugin({
@@ -5490,7 +5491,7 @@
       <div class="field"><label>Install a plugin from code</label><textarea class="inp" id="dev-code" style="min-height:140px;font-family:var(--mono);font-size:12px" placeholder="Paste a Cadence.registerPlugin({...}) call"></textarea><div class="row" style="margin-top:8px"><button class="btn primary" data-act="dev-install">Install</button></div></div>`;
     } else {
       const oldDone = S.tasks.filter(t => t.done && t.doneAt < Date.now() - 30 * 864e5).length;
-      body += `<div class="field"><label>Storage</label><div class="muted">${Store.status === 'synced' ? (Store.server ? 'Saved on your THING server (NAS), with daily backups — shared by every device that opens it.' : 'Synced to your Claude account — available on any device where you open Cadence.') : 'Saved in this browser only.'} ${S.tasks.length} tasks · ${S.clients.length} clients · ${S.meetings.length} meetings.</div></div>
+      body += `<div class="field"><label>Storage</label><div class="muted">${Store.status === 'synced' ? (Store.server ? 'Saved on your ' + esc(APP.name) + ' server (NAS), with daily backups — shared by every device that opens it.' : 'Synced to your Claude account — available on any device where you open Cadence.') : 'Saved in this browser only.'} ${S.tasks.length} tasks · ${S.clients.length} clients · ${S.meetings.length} meetings.</div></div>
       <div class="field"><label>Demo mode</label><div class="row" style="align-items:center">${DEMO ? `<button class="btn" data-act="demo-reset">↺ Reset demo data</button><button class="btn primary" data-act="demo-exit">Exit demo</button>` : `<button class="btn" data-act="demo-open">Open demo in a new tab ↗</button>`}<span class="muted" style="font-size:12px">${DEMO ? 'You’re looking at fake data. Nothing here is saved to your NAS.' : 'Fake clients, tasks, meetings and calendar to play with — your real data isn’t touched.'}</span></div></div>
       <div class="field"><label>Backup</label><div class="row"><button class="btn" data-act="export">Copy backup (JSON)</button><button class="btn" data-act="import-open">Restore from backup…</button></div></div>
       <div class="field"><label>Housekeeping</label><button class="btn" data-act="purge" ${oldDone ? '' : 'disabled'}>Delete ${oldDone} tasks completed 30+ days ago</button></div>`;
@@ -5540,6 +5541,12 @@
   }
 
   /* Meeting mode lives in meeting.js; wired up just before the user plugins load */
+  /* an app without tasks (CRATE DIGGER) doesn't load meeting.js: everything meeting mode offers does nothing there */
+  const noMeeting = () => {
+    const none = () => {},
+      blank = () => '';
+    return { startMeeting: none, hideMeeting: none, renderMeeting: none, tidyMeeting: () => ({ changed: 0, dupes: 0 }), aiWording: async () => {}, clientAgendaCard: blank, shotTile: blank, markup: none, commitMeeting: none, openImport: none, runImport: none, meetingBand: blank };
+  };
   let startMeeting,
     hideMeeting,
     renderMeeting,
@@ -6023,7 +6030,7 @@
       case 'import-run':
         try {
           const d = JSON.parse($('#imp-json').value);
-          if (!Array.isArray(d.tasks)) throw new Error('Not a THING backup');
+          if (!Array.isArray(d.tasks)) throw new Error('Not a ' + APP.name + ' backup');
           S = Object.assign(blank(), d);
           save();
           rebuildPlugins();
@@ -6480,7 +6487,7 @@
     openImport,
     runImport,
     meetingBand
-  } = window.CadenceMeeting({
+  } = (window.CadenceMeeting || noMeeting)({
     get S() {
       return S;
     },
@@ -6607,7 +6614,7 @@
     if ($('#upd-bar')) return;
     const b = document.createElement('div');
     b.id = 'upd-bar';
-    b.innerHTML = `<span>✨ THING was updated on your NAS</span><button class="btn primary" id="upd-go">Reload</button><button class="upd-x" id="upd-x" title="Later">✕</button>`;
+    b.innerHTML = `<span>✨ ${esc(APP.name)} was updated on your NAS</span><button class="btn primary" id="upd-go">Reload</button><button class="upd-x" id="upd-x" title="Later">✕</button>`;
     document.body.appendChild(b);
     $('#upd-go').onclick = reloadNow;
     $('#upd-x').onclick = () => b.remove();
@@ -6668,7 +6675,7 @@
       })
       .catch(e => {
         // couldn't read it: start this device fresh against the NAS (a full pull), never pushing the empty placeholder
-        console.warn('THING: IndexedDB copy unreadable', e);
+        console.warn(APP.name + ': IndexedDB copy unreadable', e);
         Sync.st = { init: false, cursor: 0, recs: {}, dirty: {} };
         toast("Couldn't open this browser's saved copy. Your NAS has everything; it's loading from there.");
       })
