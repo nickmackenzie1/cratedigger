@@ -1,0 +1,10 @@
+.env
+certs/
+.mkcert-ca/
+data/
+node_modules/
+test-results/
+playwright-report/
+music/
+slskd-downloads/
+usenet-complete/
