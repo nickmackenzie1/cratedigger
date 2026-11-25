@@ -2,7 +2,7 @@
 certs/
 .mkcert-ca/
 data/
-node_modules/
+node_modules
 test-results/
 playwright-report/
 music/
