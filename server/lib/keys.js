@@ -12,8 +12,6 @@ const FILE = () => path.join(process.env.DATA_DIR || '/data', 'keys.json');
 // what can be connected, in the order the page shows them
 const SERVICES = [
   { id: 'DISCOGS_TOKEN', name: 'Discogs', for: 'Your record collection and wantlist in Music Radar, and the Record of the day theme', get: 'discogs.com → Settings → Developers → Generate new token', link: 'https://www.discogs.com/settings/developers' },
-  { id: 'TMDB_API_KEY', name: 'TMDB', for: 'Pictures and colours for film and TV themes, and Movie night', get: 'themoviedb.org → Settings → API (the API key or the read access token)', link: 'https://www.themoviedb.org/settings/api' },
-  { id: 'THEGAMESDB_API_KEY', name: 'TheGamesDB', for: 'Fanart and title logos for game themes and Game shelf', get: 'Ask for a key on TheGamesDB (see their API page)', link: 'https://thegamesdb.net/' },
   { id: 'LASTFM_API_KEY', name: 'Last.fm', for: 'Optional: Last.fm listener counts, charts and similar artists in Music Radar. Keys need a Last.fm Pro account from 1 December 2026; without one, Radar uses ListenBrainz', get: 'last.fm → API account → Create', link: 'https://www.last.fm/api/account/create' },
   { id: 'LISTENBRAINZ_TOKEN', name: 'ListenBrainz', for: 'Sends what you listen to in CRATE DIGGER to your ListenBrainz profile', get: 'listenbrainz.org → Settings → User token', link: 'https://listenbrainz.org/settings/' },
   { id: 'KOITO_URL', name: 'Koito address', for: 'Your own Koito scrobbler on your network (like http://192.168.1.20:4110). CRATE DIGGER sends your listens there too', get: 'The address you open Koito at', link: 'https://github.com/gabehf/koito' },

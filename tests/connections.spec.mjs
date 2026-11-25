@@ -66,14 +66,14 @@ test('Settings → Connections in the app', async ({ page }) => {
   await page.goto(B + '/'); await expect(page.locator('#sync')).toBeVisible({ timeout: 10000 });
   await page.evaluate(() => document.querySelector('[data-act=settings]').click());
   await page.locator('.modal [data-settings-tab=connections], .modal button', { hasText: 'Connections' }).first().click();
-  const row = page.locator('.conn[data-k=TMDB_API_KEY]');
+  const row = page.locator('.conn[data-k=DISCOGS_TOKEN]');
   await expect(row).toContainText('Not connected');
   await row.locator('input').fill('tmdbKeyAbcd4321'); await row.locator('[data-conn=save]').click();
-  await expect(page.locator('.conn[data-k=TMDB_API_KEY]')).toContainText('Connected · ends in 4321');
-  await expect(page.locator('.conn[data-k=TMDB_API_KEY] input')).toHaveValue('');
+  await expect(page.locator('.conn[data-k=DISCOGS_TOKEN]')).toContainText('Connected · ends in 4321');
+  await expect(page.locator('.conn[data-k=DISCOGS_TOKEN] input')).toHaveValue('');
   await expect(page.locator('.conn[data-k=LASTFM_API_KEY]')).toContainText('from .env');
-  await page.locator('.conn[data-k=TMDB_API_KEY] [data-conn=remove]').click();
-  await expect(page.locator('.conn[data-k=TMDB_API_KEY]')).toContainText('Not connected');
+  await page.locator('.conn[data-k=DISCOGS_TOKEN] [data-conn=remove]').click();
+  await expect(page.locator('.conn[data-k=DISCOGS_TOKEN]')).toContainText('Not connected');
   expect(errs).toEqual([]);
 });
 

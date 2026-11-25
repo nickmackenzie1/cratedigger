@@ -9,8 +9,11 @@ has the music notes: Radar, Downloads, KEXP and so on).
 
 ## Status
 - Runs as a music app: opens on Music Radar, the sidebar lists the music pages, phone tabs are Radar / Want to hear / Radio.
-- THING still has its music until CRATE DIGGER is running on the NAS; then THING's music comes out and a small "Music"
-  plugin there links here and shows what's playing.
+- Running on the NAS since 2026-11-25, with the user's music data imported from THING. THING's music is gone; THING's
+  `music-link` plugin links here and shows what's playing (it reads `api/now`, fed by `plugins/now-share.js`).
+- Own sign-in cookie (`cratedigger_session`, SESSION_COOKIE in docker-compose.yml) so THING's and this one don't clash.
+- Added after the split: jobs.js (Background work), the music checks, the music Connections keys; the watch-list keys
+  (TMDB, TheGamesDB) were left out.
 
 ## Backlog
 - THING's music data is imported (done by the user, 2026-11-25).

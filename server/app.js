@@ -23,8 +23,9 @@ const routes = {
   podcasts: require('./routes/podcasts'),
   radio: SEPARATE_MUSIC ? () => NEXT : require('./routes/radio'),
   problems: require('./routes/problems'),
+  now: require('./routes/now'),   // what's playing, for THING's Music plugin
 };
-const API = [routes.problems, routes.system, routes.sync, routes.lookup, routes.push, routes.integrations, routes.files, routes.radar, routes.podcasts, routes.radio];
+const API = [routes.now, routes.problems, routes.system, routes.sync, routes.lookup, routes.push, routes.integrations, routes.files, routes.radar, routes.podcasts, routes.radio];
 
 // Every request goes through here, top to bottom:
 //   1. the public CA download (so new devices can trust HTTPS before anything else)
