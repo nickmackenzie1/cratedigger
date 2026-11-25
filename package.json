@@ -1,6 +1,6 @@
 {
   "name": "cratedigger",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "Modular to-do app for consultants. The app itself has no dependencies; these are only for tests.",
   "scripts": {

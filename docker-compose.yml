@@ -23,3 +23,4 @@ services:
     environment:
       - HTTPS_PORT=8443                         # inside the container (overrides .env)
       - HTTPS_PUBLIC_PORT=${HTTPS_PORT:-8545}   # on the NAS, for the http -> https redirect
+      - SESSION_COOKIE=cratedigger_session      # THING's is cadence_session; same NAS name, so they must differ
