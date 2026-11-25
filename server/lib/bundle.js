@@ -1,0 +1,186 @@
+'use strict';
+/* One download instead of ~70, and only the plugins you use.
+   index.html marks its app scripts with <!-- bundle --> … <!-- /bundle -->. When the page is served, that block becomes
+   a small inline script plus one <script src="bundle.js?v=HASH&skip=…">:
+   - bundle.js carries every file's source and runs each as its own inline <script>, in order, so it behaves exactly
+     like the separate tags: shared globals, one plugin that throws doesn't stop the rest, devtools names via sourceURL.
+   - the inline script knows which plugins live in which file (a manifest built here by running each plugin file in a
+     sandbox that only records Cadence.registerPlugin({...})), reads which plugins are switched off in your Work and
+     Life spaces from this browser's saved copy, and leaves out files whose plugins are all off in both. core.js adds
+     those plugins to Settings → Plugins as placeholders and fetches bundle.js?only=<file> the moment one is switched on.
+   - files other code leans on (ALWAYS) are never left out.
+   Gzipped and Brotli'd once per combination (off the main thread), cached by the browser until a file changes (new hash).
+   Opening the app with ?nobundle, or CADENCE_BUNDLE=0 in the NAS .env, serves the plain tags for debugging.
+   Nothing to build or commit: it's assembled from public/ in memory, rebuilt when a file's size or time changes. */
+const fs = require('fs');
+const path = require('path');
+const zlib = require('zlib');
+const vm = require('vm');
+const crypto = require('crypto');
+const { PUBLIC_DIR } = require('../config');
+
+const BLOCK = /<!-- bundle -->([\s\S]*?)<!-- \/bundle -->/;
+// provide globals other code uses (island toasts, the date picker, templates, chase/recap/prep, weather, the Life kit)
+const ALWAYS = new Set(['plugins/podcasts.js', 'plugins/visualizer.js', 'plugins/island.js', 'plugins/datepick.js', 'plugins/secure-phone.js']);
+const META = ['id', 'name', 'version', 'icon', 'color', 'category', 'tagline', 'description', 'spaces', 'builtin'];
+let cache = null; // { sig, hash, files: [[src, code]], manifest, out: Map(key → { js, gz, br, etag }) }
+
+const enabled = url => process.env.CADENCE_BUNDLE !== '0' && !url.searchParams.has('nobundle');
+const srcsOf = html => { const m = html.match(BLOCK); return m ? [...m[1].matchAll(/<script src="([^"]+)"><\/script>/g)].map(x => x[1]) : null; };
+const skippable = src => src.startsWith('plugins/') && !src.startsWith('plugins/themes') && !ALWAYS.has(src);
+
+// run the plugin files in a throwaway sandbox (in page order, sharing globals like the browser) and record what each registers
+function manifestOf(files) {
+  const stub = new Proxy(function () {}, { get: (t, k) => k === Symbol.toPrimitive ? () => '' : k === 'then' ? undefined : k === Symbol.iterator ? function* () {} : stub, apply: () => stub, construct: () => stub, set: () => true, has: () => false });
+  let defs = [], themeDefs = [];
+  const noop = () => 0, g = { CustomEvent: function () {}, Event: function () {}, HTMLElement: function () {}, MutationObserver: function () { return stub; }, ResizeObserver: function () { return stub; }, IntersectionObserver: function () { return stub; },
+    Image: function () { return stub; }, fetch: () => new Promise(() => {}), Intl, RegExp, Number, String, Boolean, Symbol, Error, WeakMap, WeakSet, Reflect, Proxy, Math, JSON, Date, Object, Array, Promise, Map, Set, URL,
+    parseInt, parseFloat, isNaN, encodeURIComponent, decodeURIComponent, btoa: s => s, atob: s => s, innerWidth: 1200, innerHeight: 800, devicePixelRatio: 1, performance: { now: noop },
+    setTimeout: noop, setInterval: noop, clearTimeout: noop, clearInterval: noop, requestAnimationFrame: noop, cancelAnimationFrame: noop, requestIdleCallback: noop, queueMicrotask: noop, addEventListener: noop, removeEventListener: noop,
+    document: stub, localStorage: stub, sessionStorage: stub, navigator: stub, location: stub, matchMedia: stub, getComputedStyle: stub, CSS: stub, CadenceKit: stub,
+    console: { log: noop, warn: noop, error: noop, info: noop }, Cadence: new Proxy({ registerPlugin: d => defs.push(d) }, { get: (t, k) => (k in t ? t[k] : stub) }) };
+  // theme registrations are recorded too (themes.js's own window.CadenceThemes = … is ignored here)
+  const themeRec = new Proxy({ register: t => themeDefs.push(t), list: () => [] }, { get: (t, k) => (k in t ? t[k] : stub) });
+  Object.defineProperty(g, 'CadenceThemes', { get: () => themeRec, set: () => {}, configurable: true });
+  g.window = g; g.self = g; g.globalThis = g; vm.createContext(g);
+  const out = {}, themes = {};
+  for (const [src, code] of files) {
+    if (!src.startsWith('plugins/')) continue;
+    defs = []; themeDefs = [];
+    try { vm.runInContext(code, g, { filename: src, timeout: 1000 }); } catch (e) { if (process.env.BUNDLE_DEBUG) console.warn(src, e.message); continue; } // can't tell what it registers: always load it
+    // a theme pack (only themes, no plugins): it can stay on the server until one of its themes is used
+    if (themeDefs.length && !defs.length && /^plugins\/themes-/.test(src)) themes[src] = themeDefs.filter(t => t && t.id).map(themeMeta);
+    if (!defs.length || !skippable(src)) continue;
+    out[src] = defs.filter(d => d && d.id).map(d => Object.fromEntries(META.filter(k => d[k] != null && typeof d[k] !== 'function').map(k => [k, d[k]])));
+  }
+  return { plugins: out, themes };
+}
+// what the Themes page needs to show a theme whose pack isn't loaded: its name, where it's filed, and its colours
+function themeMeta(t) {
+  const v = t.vars || {}, l = t.light || {}, pv = t.preview || {}, s = x => (typeof x === 'string' ? x.slice(0, 300) : undefined);
+  const p = { bg: v['--bg'] || l['--bg'], panel: v['--panel'] || l['--panel'], side: v['--side'] || l['--side'], text: v['--text'] || l['--text'], accent: v['--accent'] || l['--accent'], line: v['--line'] || l['--line'], r: v['--r'] };
+  for (const k of ['bg', 'panel', 'side', 'text', 'accent', 'line', 'r', 'font', 'extra']) if (pv[k] != null) p[k] = pv[k];
+  for (const k of Object.keys(p)) { p[k] = s(p[k]); if (p[k] == null) delete p[k]; }
+  const m = { id: t.id, name: s(t.name) || t.id, category: s(t.category) || 'Fun', tagline: s(t.tagline), family: s(t.family), p };
+  if (typeof t.effects === 'function') m.fx = 1;
+  if (t.light && t.dark) m.both = 1;
+  for (const k of Object.keys(m)) if (m[k] == null) delete m[k];
+  return m;
+}
+
+function build(srcs) {
+  const sig = srcs.map(s => { try { const st = fs.statSync(path.join(PUBLIC_DIR, s)); return `${s}:${st.size}:${st.mtimeMs}`; } catch (e) { return `${s}:missing`; } }).join('|');
+  if (cache && cache.sig === sig) return cache;
+  const files = srcs.map(s => { try { return [s, fs.readFileSync(path.join(PUBLIC_DIR, s), 'utf8')]; } catch (e) { return [s, `console.warn(${JSON.stringify('THING: missing ' + s)})`]; } });
+  const hash = crypto.createHash('sha1'); for (const [s, c] of files) hash.update(s + '\0' + c + '\0');
+  let manifest = {}, themes = {}; try { ({ plugins: manifest, themes } = manifestOf(files)); } catch (e) { console.warn('bundle manifest', e.message); }
+  cache = { sig, hash: hash.digest('hex').slice(0, 12), files, manifest, themes, out: new Map() };
+  return cache;
+}
+
+// Brotli in its own worker thread (compress-worker.js), one at a time: on Node's shared pool, a few of these at once
+// starved file reads for every other request (2026-11-18). No worker, no Brotli: gzip is served instead.
+let cw = null, cwSeq = 0; const cwWait = new Map();
+function brotli(buf) {
+  if (!cw) {
+    try {
+      cw = new (require('worker_threads').Worker)(path.join(__dirname, 'compress-worker.js')); cw.unref();
+      cw.on('message', m => { const r = cwWait.get(m.id); if (r) { cwWait.delete(m.id); r(m.out ? Buffer.from(m.out.buffer || m.out, m.out.byteOffset || 0, m.out.byteLength) : null); } });
+      const fail = () => { for (const r of cwWait.values()) r(null); cwWait.clear(); cw = null; };
+      cw.on('error', fail); cw.on('exit', fail);
+    } catch { return Promise.resolve(null); }
+  }
+  const id = ++cwSeq;
+  return new Promise(r => { cwWait.set(id, r); cw.postMessage({ id, buf: new Uint8Array(buf) }); });
+}
+
+// the JS for a selection: everything minus `skip`, or just `only`
+function jsFor(b, { skip = [], only = null } = {}) {
+  const key = only ? 'only:' + only.join(',') : 'skip:' + skip.join(',');
+  let hit = b.out.get(key); if (hit) return hit;
+  const sk = new Set(skip.filter(s => b.manifest[s] || b.themes[s])), on = only && new Set(only.filter(s => b.files.some(f => f[0] === s)));
+  const files = b.files.filter(([s]) => (on ? on.has(s) : !sk.has(s)));
+  const js = Buffer.from(`/* THING bundle: ${files.length} files${sk.size ? `, ${sk.size} switched-off plugin files left out` : ''}, see server/lib/bundle.js */\n`
+    + `(function(F){for(var i=0;i<F.length;i++){var s=document.createElement('script');s.dataset.src=F[i][0];s.text=F[i][1]+'\\n//# sourceURL='+F[i][0];document.body.appendChild(s);}})(${JSON.stringify(files)});\n`);
+  // compressed off the main thread (zlib's own threads), so a new combination never holds up other requests: gzip
+  // first (quick), then Brotli at its best setting (2026-11-18: about a quarter smaller than gzip for this code, but
+  // seconds to make, so it's made once per combination and used once it's ready)
+  hit = { js, gz: null, br: null, etag: `"${b.hash}-${crypto.createHash('sha1').update(key).digest('hex').slice(0, 8)}"` };
+  const h = hit;
+  h.gzP = new Promise(r => zlib.gzip(js, { level: 6 }, (e, out) => { h.gz = e ? null : out; r(h.gz); }));
+  h.brP = h.gzP.then(() => brotli(js)).then(out => { if (out) h.br = out; return out; });
+  if (b.out.size > 40) b.out.clear();
+  b.out.set(key, hit);
+  return hit;
+}
+
+// runs in the page before anything else: which plugin files can stay on the server for now?
+// A file is left out when every plugin in it is off (or not offered) in the space the page opens in, per this browser's
+// saved copy; switching space loads the rest.
+const CHOOSER = `(function(B){var off=function(k,sp){try{var o=localStorage.getItem('cadence.off.'+sp);if(o)return JSON.parse(o);var r=localStorage.getItem(k);if(!r||r.slice(0,4)==='lz1:')return null;var d=JSON.parse(r);return d&&Array.isArray(d.disabled)?d.disabled:null;}catch(e){return null;}};
+var demo=/[?&]demo(?!=0)/.test(location.search)||(function(){try{return !!sessionStorage.getItem('cadence.demo');}catch(e){return false;}})();
+var W=demo?null:off('cadence.v1','work'),L=demo?null:off('cadence.life.v1','life'),skip=[];
+// only what the space you're opening in uses (2026-11-19): a file whose plugins are all off in this space (or don't
+// belong to it) stays on the server, and moving to the other space fetches what that space needs (core.js LazyPlugins)
+var isOff=function(p,sp,list){return (p.spaces&&p.spaces.indexOf(sp)<0)||!list||list.indexOf(p.id)>=0;};
+var cur='work';try{cur=localStorage.getItem('cadence.space')==='life'?'life':'work';}catch(e){}
+var CL=cur==='life'?L:W;
+if(CL)for(var f in B.plugins){if(B.plugins[f].every(function(p){return isOff(p,cur,CL);}))skip.push(f);}
+// theme packs: only the one(s) holding each space's current theme load now; the Themes page fetches the rest (2026-11-18)
+var TW=null,TL=null;try{TW=localStorage.getItem('cadence.theme.work');TL=localStorage.getItem('cadence.theme.life');}catch(e){}
+var known=function(id){if(!id||id==='cadence')return true;for(var k in B.themes)if(B.themes[k].some(function(t){return t.id===id;}))return true;return false;};
+// (a theme that isn't listed, say one a pack makes on the fly, means every pack loads, as before)
+if(!demo&&(TW||TL)&&B.themes&&known(TW)&&known(TL))for(var tf in B.themes){if(!B.themes[tf].some(function(t){return t.id===TW||t.id===TL;}))skip.push(tf);}
+B.skipped=skip;document.write('<script src="bundle.js?v='+B.v+(skip.length?'&skip='+encodeURIComponent(skip.join(',')):'')+'"><\\/script>');
+})(window.__cadenceBundle)`;
+
+// index.html with the block swapped for the chooser (or untouched when bundling is off / the markers are missing)
+function page(html, url) {
+  const text = html.toString('utf8'), srcs = enabled(url) && srcsOf(text);
+  if (!srcs || !srcs.length) return html;
+  const b = build(srcs);
+  let version = '?'; try { version = JSON.parse(fs.readFileSync(path.join(PUBLIC_DIR, 'version.json'), 'utf8')).version; } catch (e) {}
+  const boot = JSON.stringify({ v: b.hash, version, plugins: b.manifest, themes: b.themes }).replace(/</g, '\\u003c');
+  return text.replace(BLOCK, () => `<script>window.__cadenceBundle=${boot};\n${CHOOSER}</script>`);
+}
+
+// Ready before the first request (2026-11-19): the combinations this NAS's browsers asked for are remembered
+// (data/bundle-combos.json, the last 8), and compressed again as soon as the server starts, so the first visit after a
+// release gets Brotli instead of waiting for it.
+const COMBOS = () => path.join(process.env.DATA_DIR || path.join(__dirname, '..', '..', 'data'), 'bundle-combos.json');
+let combos = null, combosT = 0;
+function readCombos() { if (combos) return combos; try { combos = JSON.parse(fs.readFileSync(COMBOS(), 'utf8')).filter(x => typeof x === 'string').slice(0, 8); } catch { combos = []; } return combos; }
+function noteCombo(skip) {
+  const k = skip.join(','), c = readCombos();
+  if (c[0] === k) return;
+  combos = [k, ...c.filter(x => x !== k)].slice(0, 8);
+  clearTimeout(combosT); combosT = setTimeout(() => { try { fs.writeFileSync(COMBOS(), JSON.stringify(combos)); } catch {} }, 2000); combosT.unref && combosT.unref();
+}
+function warm() {
+  try {
+    const html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8'), srcs = srcsOf(html);
+    if (!srcs || !srcs.length) return 0;
+    const b = build(srcs), list = readCombos().length ? readCombos() : [''];
+    for (const k of list) jsFor(b, { skip: k ? k.split(',') : [] });
+    return list.length;
+  } catch { return 0; }
+}
+
+// GET bundle.js[?skip=a,b | ?only=a] — immutable when asked for by the current hash, otherwise revalidate
+async function serve(req, res, url) {
+  let html; try { html = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'), 'utf8'); } catch (e) { res.writeHead(404); return res.end(); }
+  const b = build(srcsOf(html) || []), list = k => (url.searchParams.get(k) || '').split(',').filter(Boolean);
+  const out = jsFor(b, url.searchParams.has('only') ? { only: list('only') } : { skip: list('skip') });
+  if (!url.searchParams.has('only')) noteCombo(list('skip'));
+  const head = { 'Content-Type': 'text/javascript; charset=utf-8', ETag: out.etag, Vary: 'Accept-Encoding', 'X-Content-Type-Options': 'nosniff',
+    'Cache-Control': url.searchParams.get('v') === b.hash ? 'private, max-age=31536000, immutable' : 'no-cache' };
+  const inm = req.headers['if-none-match'] || '';
+  if (inm === out.etag || inm === out.etag.slice(0, -1) + '-br"') { res.writeHead(304, head); return res.end(); }
+  const ae = req.headers['accept-encoding'] || '';
+  if (/\bbr\b/.test(ae) && out.br) { res.writeHead(200, { ...head, ETag: out.etag.slice(0, -1) + '-br"', 'Content-Encoding': 'br' }); return res.end(out.br); }
+  const gz = /\bgzip\b/.test(ae) && await out.gzP;
+  res.writeHead(200, gz ? { ...head, 'Content-Encoding': 'gzip' } : head);
+  res.end(gz || out.js);
+}
+
+module.exports = { page, serve, build, srcsOf, warm, ALWAYS };

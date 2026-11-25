@@ -1,0 +1,25 @@
+services:
+  cratedigger:
+    build: .
+    container_name: cratedigger
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-8585}:8484"   # http on the NAS (THING has 8484): redirects to https once certs/ exists
+      - "${HTTPS_PORT:-8545}:8443"   # https on the NAS (THING has 8443); mkcert, LAN only
+    volumes:
+      - ./data:/data
+      # the app UI is mounted live: a pushed change to public/ goes live on refresh, no rebuild
+      - ./public:/app/public:ro
+      # certificate made on the NAS by tls.sh (the CA's private key in .mkcert-ca/ is never mounted)
+      - ./certs:/certs:ro
+      # Downloads (Radar): your music folder, where songs are saved (Navidrome, Plex or Jellyfin can watch the same one),
+      # and the finished-downloads folders of slskd and SABnzbd/NZBGet, so THING can move files out of them.
+      # Set the NAS paths in .env, e.g. MUSIC_PATH=/volume1/music; until then they're folders next to THING.
+      - ${MUSIC_PATH:-./music}:/music
+      - ${SLSKD_DOWNLOADS_PATH:-./slskd-downloads}:/slskd
+      - ${USENET_COMPLETE_PATH:-./usenet-complete}:/usenet
+    env_file:
+      - .env
+    environment:
+      - HTTPS_PORT=8443                         # inside the container (overrides .env)
+      - HTTPS_PUBLIC_PORT=${HTTPS_PORT:-8545}   # on the NAS, for the http -> https redirect

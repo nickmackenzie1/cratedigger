@@ -1,0 +1,76 @@
+name: test
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+# one run at a time. A run in progress always finishes (cancelling it starved `stable` when pushes came faster than
+# a test run); pushes that arrive meanwhile wait, and only the newest waiting one runs. The promote step below
+# refuses to move `stable` backwards, so order can't go wrong either.
+concurrency:
+  group: test-main
+  cancel-in-progress: false
+jobs:
+  # the Playwright run is split three ways and runs in parallel (2026-11-20: about 10 minutes became about 4)
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false   # every part finishes, so one run shows all the failures
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      # the browser is ~150 MB: keep it between runs, keyed on the Playwright version in the lockfile
+      - id: pw
+        run: echo "version=$(node -p "require('./package-lock.json').packages['node_modules/playwright'].version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v5
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      # plugins using the API wrong, or names defined nowhere (scripts/typecheck.mjs): seconds, so the first shard does it first
+      - if: matrix.shard == 1
+        run: npm run typecheck
+      - run: npx playwright test --shard=${{ matrix.shard }}/3
+      # a picture of every theme plus report.json (tests/themes-health.spec.mjs), to look through after a look change
+      - if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: themes-${{ matrix.shard }}
+          path: test-results/themes/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # only when every shard is green
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with: { fetch-depth: 0 }
+      # only green builds reach the NAS: deploy.sh follows the `stable` branch when it exists.
+      # Never move stable backwards: only promote if this commit is newer than (descends from) what's there now.
+      - name: Promote to stable
+        run: |
+          if git fetch -q origin stable 2>/dev/null; then
+            if git merge-base --is-ancestor HEAD origin/stable; then echo "stable already has this or newer: leaving it"; exit 0; fi
+            if ! git merge-base --is-ancestor origin/stable HEAD; then echo "stable isn't behind this commit: leaving it"; exit 0; fi
+          fi
+          git push origin HEAD:refs/heads/stable
+      # every green push is a release: tag v<version from public/version.json> and publish a GitHub release
+      # (skipped if that version was already released, e.g. a push that forgot to bump)
+      - name: Release
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          V="$(node -p "require('./public/version.json').version")"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$V" >/dev/null 2>&1; then echo "v$V already released"; exit 0; fi
+          git log -1 --format='%B' | sed '/^Co-Authored-By:/d;/^Claude-Session:/d' > notes.md
+          gh release create "v$V" --target "$GITHUB_SHA" --title "Cadence $V" --notes-file notes.md
