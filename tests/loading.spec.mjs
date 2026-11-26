@@ -23,7 +23,7 @@ async function slow(page, re) {
 }
 
 test('Music Radar: outlines first, then the page; next time the last copy draws before the NAS answers', async ({ page }) => {
-  await page.goto(B + '/');
+  await page.goto(B + '/#view-radio');   // not the home page: here Radar is home, and it would load before the NAS is slowed
   let release = await slow(page, /\/api\/radar\/data/);
   await page.evaluate(() => { location.hash = 'view-radar'; });
   await expect(page.locator('.mr .skel-card').first()).toBeVisible();

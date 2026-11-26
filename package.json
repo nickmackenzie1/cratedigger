@@ -1,6 +1,6 @@
 {
   "name": "cratedigger",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "description": "CRATE DIGGER: music discovery on your own NAS. The app itself has no dependencies; these are only for tests.",
   "scripts": {
