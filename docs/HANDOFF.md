@@ -27,3 +27,15 @@ has the music notes: Radar, Downloads, KEXP and so on).
   diary" note.
 - A CRATE DIGGER logo and favicon (Lucide, no copied artwork).
 - From THING's backlog, music items: Radar mix playlists (Flows), a Navidrome / Plex / Jellyfin library link.
+
+## Ideas: holographic foil (2026-11-25, holospot: github.com/dmitrykurash/holospot, MIT)
+The user loved these for CRATE DIGGER. THING already has the kit working (cadence: public/plugins/foil.js with
+window.CadenceFoil, public/vendor/holo + three; real foil only on a real GPU, plain look otherwise). Port that here, then:
+1. Holo record cards: covers in Cover Flow and on artist pages as foil trading cards that catch the light as the pointer
+   moves or the phone tilts (motion needs https).
+2. Rare-pull foil, by kind of find: a FLAC from Downloads in Gold Shatter, a Radar deep cut in Prism, a song KEXP played
+   before it charted in Nebula Glitter.
+3. Your year as a pack of holo cards to flip through (top artist, most-played song, best find, first FLAC).
+4. Pick of the day: one foil card at the top of Radar, the pick it's surest you'll love.
+5. A Foil Emboss CRATE DIGGER logo (sign-in page, sidebar).
+Phones use the kit's lowest quality; three.js and the kit load only when a foil card first shows.
